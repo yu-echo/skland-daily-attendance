@@ -1,4 +1,7 @@
 import { ofetch } from 'ofetch'
+import { safeErrorMessage } from './redact'
+
+const SERVER_CHAN_ENDPOINT = 'https://sctapi.ftqq.com'
 
 export async function serverChan(sendkey: string, title: string, content: string) {
   if (typeof sendkey !== 'string') {
@@ -10,10 +13,11 @@ export async function serverChan(sendkey: string, title: string, content: string
     title,
     desp: content,
   }
+  // sendkey 就藏在 URL 的 path 里（/<sendkey>.send），出错时不能把 URL 打出来
+  const url = `${SERVER_CHAN_ENDPOINT}/${sendkey}.send`
   try {
-    // const resp = await axios.post(`https://sctapi.ftqq.com/${sendkey}.send`, payload);
     const data = await ofetch<{ code: number }>(
-      `https://sctapi.ftqq.com/${sendkey}.send`,
+      url,
       {
         method: 'POST',
         body: payload,
@@ -27,6 +31,6 @@ export async function serverChan(sendkey: string, title: string, content: string
     }
   }
   catch (error) {
-    console.error(`[ServerChan] Error: ${error}`)
+    console.error(`[ServerChan] Error: ${safeErrorMessage(error, url)}`)
   }
 }

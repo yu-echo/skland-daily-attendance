@@ -66,6 +66,40 @@ Token 认证日期：2026-09-18
 
 运行失败时尾部会多一行「本次运行存在失败项，请检查运行记录」。
 
+## 安全说明
+
+### Token 存在哪里
+
+`SKLAND_TOKEN` 只存在于 GitHub 的加密 Secret 中，**不在代码、不在 git 历史、不在推送正文**。
+Actions 日志里它会被自动打码成 `***`。
+
+### 仓库公开会暴露什么
+
+仓库设为 public 时，**任何登录 GitHub 的账号都能查看运行日志**（未登录访问日志接口返回 403，
+网页日志区提示 `Sign in to view`，实测如此）。日志里会出现的不是 token，而是：
+
+- 账号昵称与角色名（例如 `明日方舟 官服「某某#1234」 今天已经签到过了`）
+- 签到结果、获奖道具名
+- 运行时间与提交信息
+
+介意的话把仓库设为 **private**：Free 套餐私有仓库每月有 2000 分钟 Actions 额度，
+本项目一天跑一次、单次约 1～2 分钟，一个月约 30～60 分钟，完全够用。
+
+### 主动脱敏
+
+推送地址本身就是凭据（`https://msgpusher.com/push/<token>`、
+`https://api.day.app/<key>/`、`https://sctapi.ftqq.com/<sendkey>.send`），
+而 ofetch 抛出的错误消息里**带完整请求 URL**。直接 `console.error(error)` 会把凭据写进日志。
+
+`packages/notification/src/redact.ts` 做了两层处理：抹掉指定 URL 的 path/query，
+并兜底抹掉消息里出现的任意其它链接的 path。日志里只会留下主机名：
+
+```
+[MessagePusher] Error: [POST] "https://msgpusher.com/***": 401 Unauthorized
+```
+
+GitHub 按 secret 值自动打码是最后一道防线，不该依赖它——一旦 URL 被编码、截断或日志被转发就失效。
+
 ## 注意事项
 
 - 本项目仅用于学习和研究目的

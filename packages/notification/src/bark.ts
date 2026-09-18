@@ -1,4 +1,5 @@
 import { ofetch } from 'ofetch'
+import { safeErrorMessage } from './redact'
 
 export async function bark(url: string, title: string, content: string) {
   if (typeof url !== 'string' || !url.startsWith('https://')) {
@@ -22,6 +23,7 @@ export async function bark(url: string, title: string, content: string) {
     console.debug(data)
   }
   catch (error) {
-    console.error(`[Bark] Error: ${error}`)
+    // Bark 地址形如 https://api.day.app/<key>/，path 就是凭据，不能整体打进日志
+    console.error(`[Bark] Error: ${safeErrorMessage(error, url)}`)
   }
 }
