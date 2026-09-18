@@ -216,6 +216,12 @@ GitHub 按 Secret 值自动打码是最后一道防线，不该依赖它——UR
 相关项目：
 - [罗德岛远程指挥部](https://github.com/enpitsuLin/rhodes-headquarters) —— 浏览器扩展，用于监控森空岛信息
 
+---
+
+## License
+
+[MIT](./LICENSE)
+
 <p align="center">
   <sub>本项目仅供学习交流，请勿用于商业用途</sub>
 </p>
