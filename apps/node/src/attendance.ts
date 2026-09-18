@@ -26,7 +26,10 @@ function createCombinePushMessage(options: Options, tokens: string[] = []) {
   const push = async () => {
     const title = `【森空岛每日签到】`
     // 尾部标明来源与 Token 认证日期，便于区分消息是谁发的、凭证是否需要更新
-    const content = `${messages.join('\n\n')}\n\n${FOOTER_SEPARATOR}\n${buildFooter(tokens, !hasError)}`
+    const footer = buildFooter(tokens, !hasError)
+    const content = `${messages.join('\n\n')}\n\n${FOOTER_SEPARATOR}\n${footer}`
+    // 尾部只在推送正文里，不落到日志就没法排查，这里补一行
+    console.log(`\n${FOOTER_SEPARATOR}\n${footer}`)
     if (options.withServerChan) {
       await serverChan(options.withServerChan, title, content)
     }
