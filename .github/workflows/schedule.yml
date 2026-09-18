@@ -40,6 +40,8 @@ jobs:
 
       # 跨运行保留凭证状态文件，用于在推送里标明 Token 认证日期。
       # key 带 run_id 保证每次都写入，restore-keys 前缀匹配拿回上一次的。
+      # 注意 path 与 SKLAND_STATE_FILE 必须指向同一个文件：pnpm -C 会切换工作目录，
+      # 用相对路径会写到 apps/node/ 下，导致这里匹配不到、缓存永远存不上。
       - name: Restore credential state
         uses: actions/cache@v4
         with:
@@ -56,3 +58,5 @@ jobs:
           BARK_URL: ${{ secrets.BARK_URL }}
           SELECT_CHANNEL: ${{ secrets.SELECT_CHANNEL }}
           MESSAGE_PUSHER_URL: ${{ secrets.MESSAGE_PUSHER_URL }}
+          # 绝对路径，保证与上面的 cache path 指向同一文件（pnpm -C 会切工作目录）
+          SKLAND_STATE_FILE: ${{ github.workspace }}/.skland-state.json
