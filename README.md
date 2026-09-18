@@ -1,16 +1,57 @@
 # 森空岛签到
 
-使用 TypeScript 实现的森空岛自动签到系统，支持多账号管理和多种推送通知方式。
+用 GitHub Actions 每天自动完成森空岛各游戏签到，**同时支持明日方舟与明日方舟：终末地**，结果推送到微信。
 
-核心支持在所有支持 [Web Cryptography](https://caniuse.com/cryptography) 的运行环境运行，包括浏览器、Node.js、Cloudflare Workers 等。
+核心代码是跨运行时的（基于 [Web Cryptography](https://caniuse.com/cryptography)），
+可在 Node.js、Cloudflare Workers、浏览器中运行；本仓库主要维护 GitHub Actions 这条链路。
 
 ## 功能特点
 
-- 🌟 支持多账号管理
-- 🎮 **同时签到多个游戏**：明日方舟、明日方舟：终末地
-- 🤖 自动定时执行签到任务
-- 📱 支持多种推送通知方式
-- 🔄 支持错误自动重试
+- 🎮 **同时签到多个游戏**：明日方舟、明日方舟：终末地，自动识别账号绑定了哪些
+- 👥 支持多账号（`SKLAND_TOKEN` 用逗号分隔）
+- 🔁 每个角色独立重试，单个失败不影响其它角色
+- 📱 支持 ServerChan / Bark / MessagePusher 推送
+- 🛡️ 日志与错误信息主动脱敏，公开仓库也不泄露凭据
+
+## 快速开始（GitHub Actions）
+
+### 1. 获取 Token
+
+登录 [森空岛](https://www.skland.com/) 后打开 <https://web-api.skland.com/account/info/hg>，
+页面会返回一段 JSON，复制 `data.content` 的完整值。
+
+> 这串 Token 等同于你的账号登录凭证，泄露等于账号被拿走。
+> 不要在群里、截图里、issue 里发它。
+
+### 2. 配置 Secrets
+
+`Settings → Secrets and variables → Actions → New repository secret`：
+
+| Secret | 必填 | 说明 |
+| --- | --- | --- |
+| `SKLAND_TOKEN` | 是 | 上一步的 Token。多账号用**半角逗号**分隔：`token1,token2` |
+| `MESSAGE_PUSHER_URL` | 否 | MessagePusher 的完整 Webhook 地址 |
+| `SERVERCHAN_SENDKEY` | 否 | ServerChan 的 SendKey |
+| `BARK_URL` | 否 | Bark 地址，形如 `https://api.day.app/<key>/` |
+
+三个推送渠道可任选，配了哪个就走哪个；都不配则只写日志。
+
+### 3. 跑一次
+
+`Actions → attendance → Run workflow`。
+
+GitHub 的定时任务需要先手动触发一次才会激活。
+
+## 定时规则
+
+```
+cron: '0 16 * * *'    # UTC
+```
+
+即**北京时间每天 00:00**。
+
+仓库里还有 `auto_push.yml`，每月 1 日和 15 日自动提交一次空 commit——
+GitHub 会在仓库 60 天无活动时停用定时任务，这个步骤用来防止它被停掉。
 
 ## 支持的游戏
 
@@ -19,35 +60,28 @@
 | 明日方舟 | `arknights` | 1（官服）/ 2（B 服） | `POST /api/v1/game/attendance` |
 | 明日方舟：终末地 | `endfield` | 3 | `POST /api/v1/game/endfield/attendance` |
 
-两个接口形态不同，不能互相替代：
+**这两个游戏是完全不同的链路，不能靠换参数复用**：
 
-- **明日方舟**：角色用 `uid` 标识，`gameId` 传渠道号，签到参数走 body。
-- **终末地**：一个账号下可能有多个区服角色，每个都要**单独**签到；
-  角色信息通过 `sk-game-role: {gameId}_{roleId}_{serverId}` 请求头传递，body 为空。
-  终末地的签到状态也没有 `records` 列表，改用 `hasToday` 字段判断。
+- **明日方舟**：角色用 `uid` 标识，`gameId` 传渠道号，签到参数放 body。
+- **终末地**：一个账号下可能有**多个区服角色，每个都要单独签**；角色信息通过
+  `sk-game-role: {gameId}_{roleId}_{serverId}` **请求头**传递，body 为空。
+- 终末地的签到状态没有 `records` 列表，用 `hasToday` 布尔值判断。
+- 终末地的奖励 `awardIds` 只有 id，名称和数量要去 `resourceInfoMap` 里查。
 
 绑定接口 `/api/v1/game/player/binding` 一次返回账号下所有游戏的角色，
-脚本会自动筛出可签到的游戏并逐个处理，无需额外配置。
+脚本会自动筛出可签到的游戏逐个处理，不需要额外配置。
 
-新增游戏只需在 `packages/core/src/games.ts` 的 `GAME_REGISTRY` 里加一条记录，
-再按需扩展 `expandBindings()` 的摊平逻辑。
+### 新增一个游戏
 
-## 部署方式
-
-本项目提供两种部署方式，请根据个人需求选择：
-
-1. [Cloudflare Workers 版本](./apps/cloudflare/README.md)
-2. [GitHub Actions 版本](./apps/node//README.md)
-
+在 `packages/core/src/games.ts` 的 `GAME_REGISTRY` 里加一条记录，
+再按需扩展 `expandBindings()` 的摊平逻辑即可，其余（筛选、分组、输出、重试）会自动适配。
 
 ## 推送通知
 
-每条推送的正文尾部都会自动附上来源与凭证状态：
-
 ```
-明日方舟 官服「博士」 签到成功，获得了「龙门币」1000个
+明日方舟 官服「博士」 今天已经签到过了
 明日方舟：终末地 China「管理员」 签到成功，获得了「折金票」2000个
-成功签到2个角色（明日方舟 1 / 明日方舟：终末地 1）
+成功签到1个角色（明日方舟：终末地 1）
 
 ----------------------
 来源：GitHub Actions · attendance
@@ -55,59 +89,83 @@
 Token 认证日期：2026-09-18
 ```
 
-- **来源**：在 GitHub Actions 里显示 `GitHub Actions` 并附运行记录直达链接；
-  本机直接运行则显示 `本地运行`，便于区分消息是谁发的。
+- **来源**自动识别：Actions 里显示 `GitHub Actions` 并附运行记录直达链接；
+  本机直接运行显示 `本地运行`。
 - **Token 认证日期**：`SKLAND_TOKEN` 是鹰角通行证的不透明凭据，本身不含签发时间，
-  所以这里取该凭证**首次在本流水线认证成功**的日期（按 Asia/Shanghai 计），
-  存在 `.skland-state.json` 里，由 `actions/cache` 跨运行保留。
-  状态文件只写凭证的 SHA-256 短指纹，不会落地 token 明文。
-- 若将来 `SKLAND_TOKEN` 换成 JWT，会自动改读真实的 `iat` / `exp`，
-  并在推送里补上 `Token 有效期至 …（剩 N 天）`；解析不出来时不会伪造有效期。
+  所以这里取该凭证**首次在本流水线认证成功**的日期，存在 `.skland-state.json` 里，
+  由 `actions/cache` 跨运行保留。状态文件只写凭证的 SHA-256 短指纹，**不落地 Token 明文**。
+- 若将来 Token 换成 JWT，会自动改读真实的 `iat` / `exp` 并补上有效期；
+  读不出时不会伪造这一行。
+- 运行失败时尾部会多一行「本次运行存在失败项，请检查运行记录」。
 
-运行失败时尾部会多一行「本次运行存在失败项，请检查运行记录」。
+## 排查
 
-## 安全说明
+| 现象 | 原因 | 处理 |
+| --- | --- | --- |
+| 只出现明日方舟，没有终末地 | 该账号没绑定终末地，或摊平逻辑没生效 | 看日志里角色列表展开的结果 |
+| 终末地报 403 / 404 | 走错端点 | 确认用的是 `/api/v1/game/endfield/attendance` |
+| 终末地报参数缺失 | 角色信息没放请求头 | 需要 `sk-game-role: {gameId}_{roleId}_{serverId}` |
+| 「今天已经签到过了」 | 状态查询已有今日记录 | **正常结果**，不是失败 |
+| 奖励显示「未知奖励」 | 终末地奖励 id 查不到 | 用 `awardIds[].id` 反查 `resourceInfoMap` |
+| 日志里 `Path Validation Error` | 状态文件路径与 cache path 不一致 | `pnpm -C` 会切工作目录，`SKLAND_STATE_FILE` 要用 `${{ github.workspace }}` 绝对路径 |
+
+> 排查时**不要只看 run 是绿的**：漏签一个游戏是绿的，缓存没存上是绿的，
+> 认证日期退化成「今天」也是绿的。要看日志。
+
+## 本地运行
+
+```bash
+pnpm install
+SKLAND_TOKEN=你的token \
+MESSAGE_PUSHER_URL=你的webhook \
+pnpm -C ./apps/node start
+```
+
+本机运行不需要配置 `SKLAND_STATE_FILE`，状态文件会落在当前目录。
+
+## 安全
 
 ### Token 存在哪里
 
-`SKLAND_TOKEN` 只存在于 GitHub 的加密 Secret 中，**不在代码、不在 git 历史、不在推送正文**。
-Actions 日志里它会被自动打码成 `***`。
+`SKLAND_TOKEN` 只存在于 GitHub 的加密 Secret，**不在代码、不在 git 历史、不在推送正文**，
+Actions 日志里自动打码成 `***`。
 
-### 仓库公开会暴露什么
+### 仓库设为公开会暴露什么
 
-仓库设为 public 时，**任何登录 GitHub 的账号都能查看运行日志**（未登录访问日志接口返回 403，
-网页日志区提示 `Sign in to view`，实测如此）。日志里会出现的不是 token，而是：
+公开仓库的 Actions 日志**任何登录 GitHub 的账号都能查看**（未登录看不到：
+日志接口返回 403，网页日志区提示 `Sign in to view`）。日志里出现的是：
 
-- 账号昵称与角色名（例如 `明日方舟 官服「某某#1234」 今天已经签到过了`）
-- 签到结果、获奖道具名
+- 账号昵称与角色名
+- 签到结果与获奖道具
 - 运行时间与提交信息
 
-介意的话把仓库设为 **private**：Free 套餐私有仓库每月有 2000 分钟 Actions 额度，
-本项目一天跑一次、单次约 1～2 分钟，一个月约 30～60 分钟，完全够用。
+**不是 Token**，但也算隐私。介意就把仓库设为 private——Free 套餐私有仓库每月有
+2000 分钟额度，本项目一天一次、单次 1~2 分钟，一个月约 30~60 分钟，够用。
 
 ### 主动脱敏
 
-推送地址本身就是凭据（`https://msgpusher.com/push/<token>`、
-`https://api.day.app/<key>/`、`https://sctapi.ftqq.com/<sendkey>.send`），
-而 ofetch 抛出的错误消息里**带完整请求 URL**。直接 `console.error(error)` 会把凭据写进日志。
+推送地址本身就是凭据（`https://msgpusher.com/push/<token>`、`https://api.day.app/<key>/`、
+`https://sctapi.ftqq.com/<sendkey>.send`），而 ofetch 抛出的错误消息里**带完整请求 URL**。
+直接 `console.error(error)` 会把凭据写进日志。
 
-`packages/notification/src/redact.ts` 做了两层处理：抹掉指定 URL 的 path/query，
-并兜底抹掉消息里出现的任意其它链接的 path。日志里只会留下主机名：
+`packages/notification/src/redact.ts` 会在打印前抹掉 URL 的 path 与 query，日志里只留主机名：
 
 ```
 [MessagePusher] Error: [POST] "https://msgpusher.com/***": 401 Unauthorized
 ```
 
-GitHub 按 secret 值自动打码是最后一道防线，不该依赖它——一旦 URL 被编码、截断或日志被转发就失效。
+GitHub 按 Secret 值自动打码是最后一道防线，不该依赖它——URL 一旦被编码、截断，
+或日志被转发到别处，打码就失效了。
 
-## 注意事项
+## 其他部署方式
 
-- 本项目仅用于学习和研究目的
-- 请勿频繁调用 API，以免影响账号安全
+- [apps/node](./apps/node/README.md) — 本仓库 GitHub Actions 用的就是这套
+- [apps/cloudflare](./apps/cloudflare/README.md) — Cloudflare Workers 版本（**目前仅支持明日方舟**）
 
 ## 相关项目
 
-- [罗德岛远程指挥部](https://github.com/enpitsuLin/rhodes-headquarters) - 浏览器扩展，用于监控森空岛信息
+- 上游项目：[AEtherside/skland-daily-attendance](https://github.com/AEtherside/skland-daily-attendance)
+- [罗德岛远程指挥部](https://github.com/enpitsuLin/rhodes-headquarters) — 浏览器扩展，用于监控森空岛信息
 
 ## License
 
