@@ -1,5 +1,16 @@
-import type { AttendanceResponse, BindingResponse, CredResponse, GetAttendanceResponse } from '../types'
+import type {
+  AttendanceQuery,
+  AttendanceResponse,
+  BindingResponse,
+  CredResponse,
+  EndfieldAttendanceResponse,
+  EndfieldAttendanceStatus,
+  GetAttendanceResponse,
+} from '../types'
 import { createFetch } from 'ofetch'
+import { ENDFIELD_ATTENDANCE_URL, SKLAND_ATTENDANCE_URL } from '../constant'
+import { isAlreadyAttended } from '../games'
+import { isEndfieldQuery } from '../types'
 import { command_header, getDid, onSignatureRequest } from '../utils'
 
 const fetch = createFetch({
@@ -40,8 +51,13 @@ export async function signIn(grant_code: string) {
 
   return data.data
 }
+
 /**
  * 通过登录凭证和森空岛用户的 token 获取角色绑定列表
+ *
+ * 返回的 list 里同时包含明日方舟和终末地等游戏，
+ * 用 `expandBindings()` 摊平成待签到目标。
+ *
  * @param cred 鹰角网络通行证账号的登录凭证
  * @param token 森空岛用户的 token
  */
@@ -60,36 +76,96 @@ export async function getBinding(cred: string, token: string) {
 }
 
 /**
- * 明日方舟每日签到
+ * 终末地把区服角色信息放在请求头里，而不是 query / body
+ */
+function endfieldRoleHeaders(query: AttendanceQuery) {
+  if (!isEndfieldQuery(query))
+    return {}
+  return {
+    'sk-game-role': `${query.gameId}_${query.roleId}_${query.serverId}`,
+  }
+}
+
+/**
+ * 查询今日签到状态
+ *
+ * - 明日方舟：`GET /api/v1/game/attendance?uid&gameId`
+ * - 终末地：`GET /api/v1/game/endfield/attendance`，角色信息走 `sk-game-role` 头
+ *
  * @param cred 鹰角网络通行证账号的登录凭证
  * @param token 森空岛用户的 token
+ * @param query 签到查询条件，见 `AttendanceQuery`
  */
-export async function attendance(cred: string, token: string, body: { uid: string, gameId: string }) {
-  const record = await fetch<GetAttendanceResponse>(
-    '/api/v1/game/attendance',
-    {
-      headers: Object.assign({ token, cred }, command_header),
-      query: body,
-    },
-  )
-
-  const todayAttended = record.data.records.find((i) => {
-    const today = new Date().setHours(0, 0, 0, 0)
-    return new Date(Number(i.ts) * 1000).setHours(0, 0, 0, 0) === today
-  })
-  if (todayAttended) {
-    // 今天已经签到过了
-    return false
-  }
-  else {
-    const data = await fetch<AttendanceResponse>(
-      '/api/v1/game/attendance',
+export async function getAttendanceStatus(
+  cred: string,
+  token: string,
+  query: AttendanceQuery,
+): Promise<GetAttendanceResponse | EndfieldAttendanceStatus> {
+  if (isEndfieldQuery(query)) {
+    return await fetch<EndfieldAttendanceStatus>(
+      ENDFIELD_ATTENDANCE_URL,
       {
-        method: 'POST',
-        headers: Object.assign({ token, cred }, command_header),
-        body,
+        headers: Object.assign(
+          { token, cred },
+          command_header,
+          endfieldRoleHeaders(query),
+        ),
       },
     )
-    return data
   }
+
+  return await fetch<GetAttendanceResponse>(
+    SKLAND_ATTENDANCE_URL,
+    {
+      headers: Object.assign({ token, cred }, command_header),
+      query,
+    },
+  )
+}
+
+/**
+ * 执行每日签到
+ *
+ * 今天的签到记录已存在时返回 `false`（保持旧行为，调用方据此判断「今天已经签到过了」）。
+ *
+ * @param cred 鹰角网络通行证账号的登录凭证
+ * @param token 森空岛用户的 token
+ * @param query 签到查询条件，见 `AttendanceQuery`
+ */
+export async function attendance(
+  cred: string,
+  token: string,
+  query: AttendanceQuery,
+): Promise<false | AttendanceResponse | EndfieldAttendanceResponse> {
+  const status = await getAttendanceStatus(cred, token, query)
+
+  if (isAlreadyAttended(status))
+    return false
+
+  if (isEndfieldQuery(query)) {
+    return await fetch<EndfieldAttendanceResponse>(
+      ENDFIELD_ATTENDANCE_URL,
+      {
+        method: 'POST',
+        headers: Object.assign(
+          { token, cred },
+          command_header,
+          endfieldRoleHeaders(query),
+          {
+            'referer': 'https://game.skland.com/',
+            'origin': 'https://game.skland.com/',
+          },
+        ),
+      },
+    )
+  }
+
+  return await fetch<AttendanceResponse>(
+    SKLAND_ATTENDANCE_URL,
+    {
+      method: 'POST',
+      headers: Object.assign({ token, cred }, command_header),
+      body: query,
+    },
+  )
 }

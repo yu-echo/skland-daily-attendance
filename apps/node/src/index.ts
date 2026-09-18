@@ -16,7 +16,8 @@ for (const [index, token] of accounts.entries()) {
   console.log(`开始处理第 ${index + 1}/${accounts.length} 个账号`)
   // eslint-disable-next-line antfu/no-top-level-await
   await doAttendanceForAccount(token, {
-    withServerChan: process.env.SERVER_CHAN_TOKEN,
+    // ServerChan 的 sendkey 在工作流里叫 SERVERCHAN_SENDKEY，两个名字都认
+    withServerChan: process.env.SERVER_CHAN_TOKEN || process.env.SERVERCHAN_SENDKEY,
     withBark: process.env.BARK_URL,
     withMessagePusher: process.env.MESSAGE_PUSHER_URL,
   })

@@ -2,8 +2,15 @@ export const SKLAND_AUTH_URL = 'https://as.hypergryph.com/user/oauth2/v2/grant'
 export const CRED_CODE_URL = 'https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code'
 /** 查询绑定角色 url */
 export const BINDING_URL = 'https://zonai.skland.com/api/v1/game/player/binding'
-/** 明日方舟每日签到 url */
+/** 明日方舟每日签到 url（查询状态用 GET，签到用 POST） */
 export const SKLAND_ATTENDANCE_URL = 'https://zonai.skland.com/api/v1/game/attendance'
+/**
+ * 终末地每日签到 url
+ *
+ * 注意这是独立端点，不是明日方舟那个地址换参数：
+ * 区服角色信息要通过 `sk-game-role: {gameId}_{roleId}_{serverId}` 请求头传递。
+ */
+export const ENDFIELD_ATTENDANCE_URL = 'https://zonai.skland.com/api/v1/game/endfield/attendance'
 
 /**
  * 数美科技配置
