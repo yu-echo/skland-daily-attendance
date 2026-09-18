@@ -3,6 +3,7 @@ import process from 'node:process'
 import { setTimeout } from 'node:timers/promises'
 import { attendance, auth, expandBindings, formatAwards, getBinding, signIn } from '@skland-x/core'
 import { bark, messagePusher, serverChan } from '@skland-x/notification'
+import { buildFooter, FOOTER_SEPARATOR } from './footer'
 
 interface Options {
   /** server 酱推送功能的启用，false 或者 server 酱的 token */
@@ -13,7 +14,7 @@ interface Options {
   withMessagePusher?: false | string
 }
 
-function createCombinePushMessage(options: Options) {
+function createCombinePushMessage(options: Options, tokens: string[] = []) {
   const messages: string[] = []
   let hasError = false
   const logger = (message: string, error?: boolean) => {
@@ -24,7 +25,8 @@ function createCombinePushMessage(options: Options) {
   }
   const push = async () => {
     const title = `【森空岛每日签到】`
-    const content = messages.join('\n\n')
+    // 尾部标明来源与 Token 认证日期，便于区分消息是谁发的、凭证是否需要更新
+    const content = `${messages.join('\n\n')}\n\n${FOOTER_SEPARATOR}\n${buildFooter(tokens, !hasError)}`
     if (options.withServerChan) {
       await serverChan(options.withServerChan, title, content)
     }
@@ -49,7 +51,7 @@ export async function doAttendanceForAccount(token: string, options: Options) {
   const { cred, token: signToken } = await signIn(code)
   const { list } = await getBinding(cred, signToken)
 
-  const [combineMessage, excutePushMessage, addMessage] = createCombinePushMessage(options)
+  const [combineMessage, excutePushMessage, addMessage] = createCombinePushMessage(options, [token])
 
   // 绑定接口一次返回所有游戏，摊平成「一次签到 = 一个目标」
   const targets = expandBindings(list)

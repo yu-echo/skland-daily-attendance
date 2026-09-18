@@ -38,6 +38,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # 跨运行保留凭证状态文件，用于在推送里标明 Token 认证日期。
+      # key 带 run_id 保证每次都写入，restore-keys 前缀匹配拿回上一次的。
+      - name: Restore credential state
+        uses: actions/cache@v4
+        with:
+          path: .skland-state.json
+          key: skland-state-${{ github.run_id }}
+          restore-keys: |
+            skland-state-
+
       - name: Run daily attendance
         run: pnpm -C "./apps/node" start
         env:

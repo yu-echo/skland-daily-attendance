@@ -40,6 +40,32 @@
 2. [GitHub Actions 版本](./apps/node//README.md)
 
 
+## 推送通知
+
+每条推送的正文尾部都会自动附上来源与凭证状态：
+
+```
+明日方舟 官服「博士」 签到成功，获得了「龙门币」1000个
+明日方舟：终末地 China「管理员」 签到成功，获得了「折金票」2000个
+成功签到2个角色（明日方舟 1 / 明日方舟：终末地 1）
+
+----------------------
+来源：GitHub Actions · attendance
+运行记录：https://github.com/yu-echo/skland-daily-attendance/actions/runs/123456
+Token 认证日期：2026-09-18
+```
+
+- **来源**：在 GitHub Actions 里显示 `GitHub Actions` 并附运行记录直达链接；
+  本机直接运行则显示 `本地运行`，便于区分消息是谁发的。
+- **Token 认证日期**：`SKLAND_TOKEN` 是鹰角通行证的不透明凭据，本身不含签发时间，
+  所以这里取该凭证**首次在本流水线认证成功**的日期（按 Asia/Shanghai 计），
+  存在 `.skland-state.json` 里，由 `actions/cache` 跨运行保留。
+  状态文件只写凭证的 SHA-256 短指纹，不会落地 token 明文。
+- 若将来 `SKLAND_TOKEN` 换成 JWT，会自动改读真实的 `iat` / `exp`，
+  并在推送里补上 `Token 有效期至 …（剩 N 天）`；解析不出来时不会伪造有效期。
+
+运行失败时尾部会多一行「本次运行存在失败项，请检查运行记录」。
+
 ## 注意事项
 
 - 本项目仅用于学习和研究目的

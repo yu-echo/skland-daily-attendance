@@ -3,3 +3,5 @@ node_modules
 package-lock.json
 .vscode
 .dev.vars
+# 凭证状态文件（记录首次认证日期，由 Actions cache 跨运行保留，不入库）
+.skland-state.json
