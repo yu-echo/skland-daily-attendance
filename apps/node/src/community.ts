@@ -30,8 +30,15 @@ export const ALL_COMMUNITY_ACTIONS: CommunityAction[] = ['checkin', 'view', 'lik
 /**
  * 默认动作：检票 / 浏览 / 点赞。
  *
- * 分享默认不开——它会在版区留下一条公开的分享记录，属于「看得见」的动作，
- * 要用设 `SKLAND_COMMUNITY_ACTIONS=all` 或显式加 `share`。
+ * 分享默认不开，原因是**它是唯一一个做没做成都验证不了的动作**：
+ * `/api/v1/score/share` 的请求体只有 `{ gameId }`（没有帖子 id、没有内容），
+ * 返回 `data: null`，也没有可回读状态的接口。跑完只能确认「接口返回 code 0」，
+ * 不能确认「任务真的完成了」。其余三个动作都有回读路径：
+ * 检票查 `ischeckin`、浏览看详情页阅读数、点赞看帖子里的 `itemRel.like`。
+ *
+ * 另外它的配额只占 1/17（检票 1 + 浏览 5 + 点赞 10 + 分享 1），
+ * 为这点收益多一次语义不明的写操作不划算。要用设 `SKLAND_COMMUNITY_ACTIONS=all`
+ * 或显式加 `share`。
  */
 export const DEFAULT_COMMUNITY_ACTIONS: CommunityAction[] = ['checkin', 'view', 'like']
 
