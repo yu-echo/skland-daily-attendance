@@ -11,6 +11,11 @@ on:
     - cron: '0 23 * * *'
     - cron: '0 7 * * *'
   workflow_dispatch:
+    inputs:
+      force:
+        description: '忽略「今天已成功」守卫，强制跑一次'
+        type: boolean
+        default: false
 
 permissions:
   # 本 workflow 只读（不提交、不写 issue）
@@ -33,6 +38,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -u
+          # 手动触发且勾了 force：跳过守卫。改完代码要验证时不用等第二天。
+          # schedule 触发时 inputs.force 是空串，不会命中这里。
+          if [ "${{ inputs.force }}" = "true" ]; then
+            echo "手动强制运行，忽略「今天已成功」守卫"
+            echo "skip=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           now=$(date -u +%s)
           # 北京当天 00:00 对应的 UTC 时刻（纯算术，不吃时区数据库）
           day_start=$(( (now + 28800) / 86400 * 86400 - 28800 ))
