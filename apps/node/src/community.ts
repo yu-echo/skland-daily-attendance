@@ -36,8 +36,12 @@ export const ALL_COMMUNITY_ACTIONS: CommunityAction[] = ['checkin', 'view', 'lik
  * 不能确认「任务真的完成了」。其余三个动作都有回读路径：
  * 检票查 `ischeckin`、浏览看详情页阅读数、点赞看帖子里的 `itemRel.like`。
  *
+ * 它本身不会在版区留下动态 —— 同类项目 shaco-checkin 的注释亦称
+ * 「分享接口只记任务次数，不发布文本」，与这里的接口形态吻合。
+ * 所以风险不在「被别人看见」，而在「我们不知道它有没有生效」。
+ *
  * 另外它的配额只占 1/17（检票 1 + 浏览 5 + 点赞 10 + 分享 1），
- * 为这点收益多一次语义不明的写操作不划算。要用设 `SKLAND_COMMUNITY_ACTIONS=all`
+ * 为这点收益多一次无法验证的写操作不划算。要用设 `SKLAND_COMMUNITY_ACTIONS=all`
  * 或显式加 `share`。
  */
 export const DEFAULT_COMMUNITY_ACTIONS: CommunityAction[] = ['checkin', 'view', 'like']
