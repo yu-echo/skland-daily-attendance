@@ -1,8 +1,10 @@
 import type { AttendanceTarget, SupportedAppCode } from '@skland-x/core'
+import type { CommunityOptions } from './community'
 import process from 'node:process'
 import { setTimeout } from 'node:timers/promises'
 import { attendance, auth, expandBindings, formatAwards, getBinding, signIn } from '@skland-x/core'
 import { bark, messagePusher, serverChan } from '@skland-x/notification'
+import { runCommunityTasks } from './community'
 import { buildFooter, FOOTER_SEPARATOR } from './footer'
 
 interface Options {
@@ -49,7 +51,11 @@ function createCombinePushMessage(options: Options, tokens: string[] = []) {
   return [logger, push, add] as const
 }
 
-export async function doAttendanceForAccount(token: string, options: Options) {
+export async function doAttendanceForAccount(
+  token: string,
+  options: Options,
+  community?: CommunityOptions | null,
+) {
   const { code } = await auth(token)
   const { cred, token: signToken } = await signIn(code)
   const { list } = await getBinding(cred, signToken)
@@ -58,6 +64,17 @@ export async function doAttendanceForAccount(token: string, options: Options) {
 
   // 绑定接口一次返回所有游戏，摊平成「一次签到 = 一个目标」
   const targets = expandBindings(list)
+
+  // 社区每日任务跟绑定角色无关，所以放在「没有绑定角色」的早退之前跑：
+  // 那个分支原来会直接 return，社区奖励就白白丢了。
+  if (community) {
+    try {
+      await runCommunityTasks(cred, signToken, community, combineMessage)
+    }
+    catch (error: any) {
+      combineMessage(`森空岛社区任务异常：${error?.message ?? error}`)
+    }
+  }
 
   if (targets.length === 0) {
     combineMessage('该账号没有绑定任何支持签到的游戏角色')

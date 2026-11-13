@@ -12,6 +12,38 @@ export const SKLAND_ATTENDANCE_URL = 'https://zonai.skland.com/api/v1/game/atten
  */
 export const ENDFIELD_ATTENDANCE_URL = 'https://zonai.skland.com/api/v1/game/endfield/attendance'
 
+/** 森空岛版区（游戏）列表：社区每日任务靠它枚举要处理的版区 */
+export const SKLAND_GAME_LIST_URL = 'https://zonai.skland.com/api/v1/game'
+/** 各版区今日检票状态（`checked` 1 = 今天已检票） */
+export const SKLAND_CHECKIN_STATUS_URL = 'https://zonai.skland.com/api/v1/score/ischeckin'
+/** 版区检票（每个版区每天一次） */
+export const SKLAND_CHECKIN_URL = 'https://zonai.skland.com/api/v1/score/checkin'
+/** 版区帖子流 */
+export const SKLAND_POST_LIST_URL = 'https://zonai.skland.com/api/v1/home/index'
+/** 单帖详情：社区任务里的「浏览」就是请求它 */
+export const SKLAND_POST_DETAIL_URL = 'https://zonai.skland.com/api/v1/item/list'
+/** 点赞 / 取消点赞 */
+export const SKLAND_ACTION_URL = 'https://zonai.skland.com/api/v1/action/trigger'
+/** 版区分享：社区任务里的「分享」 */
+export const SKLAND_SHARE_URL = 'https://zonai.skland.com/api/v1/score/share'
+
+/**
+ * 点赞动作码。12 = 点赞，21 = 收藏，取消点赞要打 `/api/v1/action/cancel`。
+ * 这个数字跨版本没变过（2023 年的 Go 实现与 2026 年的 Python 实现都是 12）。
+ */
+export const ACTION_LIKE = 12
+
+/** 帖子流的分类类型：kind = 20 是「综合讨论区」，社区任务的浏览/点赞都从它取帖子 */
+export const POST_CATE_KIND = 20
+
+/**
+ * 社区任务单个请求的超时（毫秒）。
+ *
+ * `ofetch` 默认不设超时，社区任务要发几十个请求，任何一个卡住都会把整个 job 拖到超时 ——
+ * 而签到结果已经拿到了，不该被一个点赞请求拖死。
+ */
+export const COMMUNITY_TIMEOUT = 15000
+
 /**
  * 数美科技配置
  * `window._smConf`

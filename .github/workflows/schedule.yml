@@ -104,3 +104,14 @@ jobs:
           MESSAGE_PUSHER_URL: ${{ secrets.MESSAGE_PUSHER_URL }}
           # 绝对路径，保证与上面的 cache path 指向同一文件（pnpm -C 会切工作目录）
           SKLAND_STATE_FILE: ${{ github.workspace }}/.skland-state.json
+          # ---- 森空岛社区每日任务（版区检票 / 浏览 / 点赞）----
+          # 服务端配额：检票 1、浏览 5、点赞 10、分享 1，按版区分别计算。
+          # 分享默认不开：它会在版区留下一条公开的分享记录，要开就加进 ACTIONS。
+          # 关闭整个社区任务：把 SKLAND_COMMUNITY 设成 off。
+          SKLAND_COMMUNITY_ACTIONS: checkin,view,like
+          SKLAND_COMMUNITY_VIEW: "5"
+          SKLAND_COMMUNITY_LIKE: "10"
+          # 只在个别版区做时填 gameId：1=明日方舟 2=来自星尘 3=终末地
+          SKLAND_COMMUNITY_ZONES: ""
+          # 写操作间隔（毫秒）。海外 IP 跑这个建议别低于 800
+          SKLAND_COMMUNITY_INTERVAL: "800"

@@ -137,3 +137,60 @@ export type AttendanceQuery = ArknightsAttendanceQuery | EndfieldAttendanceQuery
 export function isEndfieldQuery(q: AttendanceQuery): q is EndfieldAttendanceQuery {
   return 'roleId' in q && 'serverId' in q
 }
+
+/** 版区里的一个板块分类。`kind = 20` 是综合讨论区，社区任务从它取帖子 */
+export interface GameCate {
+  id: number
+  name: string
+  description?: string
+  kind: number
+  status: number
+}
+
+/** 一个版区（游戏）：明日方舟 / 来自星尘 / 终末地 各是一个 */
+export interface GameZone {
+  game: {
+    gameId: number
+    name: string
+  }
+  cates: GameCate[]
+}
+
+export type GameListResponse = SklandResponse<{ list: GameZone[] }>
+
+/** 检票状态：`checked` 为 1 表示今天已经检过票 */
+export type CheckinStatusResponse = SklandResponse<{
+  list: { gameId: number, checked: number }[]
+}>
+
+export type CheckinResponse = SklandResponse<null>
+
+export interface PostItem {
+  item: {
+    id: string
+    title?: string
+    gameId: number
+    cateId: number
+  }
+  /** 当前用户与该帖的关系：已经点过赞的帖子不必重复点 */
+  itemRel?: {
+    like?: boolean
+    collect?: boolean
+  }
+  user?: {
+    nickname?: string
+  }
+}
+
+/** 帖子流。`pageToken` 为空且 `hasMore` 为 false 时到底 */
+export type PostListResponse = SklandResponse<{
+  list: PostItem[]
+  hasMore: boolean
+  pageToken: string
+}>
+
+export type PostDetailResponse = SklandResponse<{ list: PostItem[] }>
+
+export type ActionResponse = SklandResponse<null>
+
+export type ShareResponse = SklandResponse<null>
